@@ -31,6 +31,7 @@ import Data.Monoid
 import Text.Taggy.Entities
 import Text.Taggy.Types
 
+import qualified Data.HashSet as HashSet
 import qualified Data.Text      as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector    as V
@@ -60,7 +61,7 @@ delimitedByTag :: T.Text -> Bool -> Parser (Tag, T.Text, Tag)
 delimitedByTag t cventities = do
   char '<'
   string t
-  (as, _) <- attributes cventities
+  (as, _) <- attributes t cventities
   inside <- matchUntil $ "</" <> t <> ">"
   return (TagOpen t as False, inside, TagClose t)
 
@@ -99,7 +100,7 @@ tagopen cventities = do
   possibly '?'
   skipSpace
   i <- ident
-  (as, autoclose) <- attributes cventities
+  (as, autoclose) <- attributes i cventities
   return $ TagOpen i as autoclose
 
 tagclose :: Parser Tag
@@ -115,8 +116,8 @@ tagclose = do
 tagtext :: Bool -> Parser Tag
 tagtext b = (TagText . if b then convertEntities else id) `fmap` takeWhile1 (/='<')
 
-attributes :: Bool -> Parser ([Attribute], Bool)
-attributes cventities = postProcess `fmap` go emptyL
+attributes :: T.Text -> Bool -> Parser ([Attribute], Bool)
+attributes el cventities = postProcess `fmap` go emptyL
   where
     go l =  (do autoclose <- tagends
                 return (l, autoclose)
@@ -127,7 +128,8 @@ attributes cventities = postProcess `fmap` go emptyL
 
     tagends = skipSpace >> parseEnd
 
-    parseEnd = autoClosing
+    parseEnd = return (HashSet.member el voidElements)
+           <|> autoClosing
            <|> ("?>" *> return False)
            <|> (">" *> return False)
 
@@ -136,6 +138,9 @@ attributes cventities = postProcess `fmap` go emptyL
       skipSpace
       char '>'
       return True
+
+    -- https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+    voidElements = HashSet.fromList ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]
 
     postProcess (l, b) = (toListL l, b)
 
