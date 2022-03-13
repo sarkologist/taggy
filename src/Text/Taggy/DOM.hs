@@ -35,7 +35,6 @@ import Data.Monoid ((<>))
 import Data.Text (Text)
 import Text.Taggy.Parser (taggyWith)
 import Text.Taggy.Types
-import Control.Applicative
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text.Lazy as LT
@@ -109,13 +108,13 @@ newtype Domify a = Domify { runDomify :: [Tag] -> ([Tag], a) }
 instance Applicative Domify where
   pure x =
     Domify (\tags -> (tags, x))
-  liftA2 f (Domify a) (Domify b) =
+  Domify a <*> Domify b =
     Domify $ \tags ->
-      let (tags', x) = a tags
-          (tags'', y) = b tags'
-      in (tags'', f x y)
-      
-  
+      let (tags', f) = a tags
+          (tags'', x) = b tags'
+      in (tags'', f x)
+
+
 instance Monad Domify where
   Domify a >>= f = Domify $ \tags ->
     let (tags', x) = a tags
