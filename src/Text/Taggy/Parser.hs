@@ -128,10 +128,9 @@ attributes el cventities = postProcess `fmap` go emptyL
 
     tagends = skipSpace >> parseEnd
 
-    parseEnd = return (HashSet.member el voidElements)
-           <|> autoClosing
+    parseEnd = autoClosing
            <|> ("?>" *> return False)
-           <|> (">" *> return False)
+           <|> (">" *> return (HashSet.member el voidElements))
 
     autoClosing = do
       char '/'
